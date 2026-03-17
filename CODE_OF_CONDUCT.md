@@ -6,4 +6,4 @@ Please read the full text at the link above. By participating in this project, y
 
 ## Reporting
 
-If you experience or witness unacceptable behavior, please contact us at **conduct@octopus.review**.
+If you experience or witness unacceptable behavior, please contact us at **conduct@octopus-review.ai**.

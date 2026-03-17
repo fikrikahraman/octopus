@@ -6,7 +6,7 @@ If you discover a security vulnerability in Octopus, please report it responsibl
 
 **Do not open a public GitHub issue for security vulnerabilities.**
 
-Instead, please send an email to **security@octopus.review** with:
+Instead, please send an email to **security@octopus-review.ai** with:
 
 - A description of the vulnerability
 - Steps to reproduce the issue
