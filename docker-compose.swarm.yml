@@ -53,7 +53,7 @@ services:
           memory: 128M
 
   qdrant:
-    image: qdrant/qdrant:v1.13.2
+    image: qdrant/qdrant:v1.17.0
     volumes:
       - qdrant_data:/qdrant/storage
     networks:
