@@ -7,6 +7,7 @@ import { LandingFeatures } from "@/components/landing-features";
 import { TrackedLink, TrackedAnchor } from "@/components/tracked-link";
 import { LandingFooter } from "@/components/landing-footer";
 import { LaunchCountdown } from "@/components/landing-countdown";
+import { NewsletterForm } from "@/components/landing-newsletter";
 import {
   IconBrandGithub,
   IconArrowRight,
@@ -279,6 +280,19 @@ export default async function LandingPage() {
             </TrackedLink>
           </div>
           <p className="mt-6 text-xs text-[#444]">No credit card required. Self-host or use our cloud.</p>
+        </div>
+      </section>
+
+      {/* Newsletter */}
+      <section className="relative z-10 px-6 pb-16 md:px-8">
+        <div className="mx-auto max-w-2xl text-center">
+          <h3 className="text-lg font-semibold text-white">Stay in the loop</h3>
+          <p className="mt-2 text-sm text-[#666]">
+            Get notified about new features, updates, and the open source launch.
+          </p>
+          <div className="mt-6">
+            <NewsletterForm />
+          </div>
         </div>
       </section>
 
