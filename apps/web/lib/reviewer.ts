@@ -90,11 +90,16 @@ function extractUserInstruction(commentBody: string): string {
 
 /** Count unique files changed in a unified diff */
 function countDiffFiles(diff: string): number {
+  return extractDiffFiles(diff).size;
+}
+
+/** Extract all file paths touched by a unified diff (using the "b/" side). */
+function extractDiffFiles(diff: string): Set<string> {
   const files = new Set<string>();
-  for (const match of diff.matchAll(/^diff --git a\/(.+?) b\//gm)) {
-    files.add(match[1]);
+  for (const match of diff.matchAll(/^diff --git a\/(.+?) b\/(.+)$/gm)) {
+    files.add(match[2]);
   }
-  return files.size;
+  return files;
 }
 
 /** Count findings in the review body (JSON format first, legacy markdown fallback) */
@@ -894,8 +899,16 @@ export async function processReview(pullRequestId: string): Promise<void> {
       }
     }
 
-    const filesChanged = countDiffFiles(diff);
-    console.log(`[reviewer] Diff fetched: ${diff.length} chars, ${filesChanged} files, tree: ${repoTree.length} files`);
+    const diffFiles = extractDiffFiles(diff);
+    const filesChanged = diffFiles.size;
+
+    // Merge PR diff files into the repo tree so new files added by the PR
+    // are visible in the file tree — prevents false positives about "missing" modules.
+    const treeSet = new Set(repoTree);
+    for (const f of diffFiles) treeSet.add(f);
+    const mergedTree = treeSet.size > repoTree.length ? Array.from(treeSet) : repoTree;
+
+    console.log(`[reviewer] Diff fetched: ${diff.length} chars, ${filesChanged} files, tree: ${mergedTree.length} files (${mergedTree.length - repoTree.length} added from diff)`);
 
     // Early exit: no reviewable changes
     if (!diff.trim()) {
@@ -1083,7 +1096,7 @@ export async function processReview(pullRequestId: string): Promise<void> {
     ];
     const MAX_TREE_FILES = 2000;
 
-    const filteredTree = repoTree
+    const filteredTree = mergedTree
       .filter((p) => !FILE_TREE_IGNORE.some((ig) => p.includes(ig)))
       .filter((p) => !octopusIg?.ignores(p));
     const fileTree = filteredTree.length > MAX_TREE_FILES
