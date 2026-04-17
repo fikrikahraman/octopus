@@ -57,6 +57,7 @@ HEARTBEAT.md
 .claude/
 .claude/commands/
 .claude/settings.local.json
+CLAUDE.md
 
 # openclaw
 .openclaw/
