@@ -191,6 +191,28 @@ SEQUENCE DIAGRAM RULES:
 6. Keep it focused — max 8 participants, max 20 messages
 7. NEVER add `classDef` or `class` statements — they are NOT supported in sequence diagrams and WILL cause parse errors
 8. Participant IDs must NEVER collide with Mermaid reserved keywords (case-insensitive): `loop`, `alt`, `else`, `opt`, `par`, `and`, `rect`, `note`, `over`, `of`, `activate`, `deactivate`, `autonumber`, `end`, `link`, `links`, `properties`, `details`, `box`, `break`, `critical`, `create`, `destroy`, `actor`, `participant`. Use `Runner`, `LoopFn`, `NoteSvc`, etc. instead. ❌ `participant Loop as runAsk()` ✅ `participant Runner as runAsk()`
+9. BALANCED ACTIVATE/DEACTIVATE: Mermaid tracks activation state LINEARLY across the whole diagram — `alt`/`else`/`opt`/`par` branches are NOT mutually exclusive for lifeline state. A single `activate X` followed by `deactivate X` in EACH branch causes "Trying to inactivate an inactive participant" on the second branch. Either:
+   - Place ONE `deactivate X` AFTER the `end` of the block (recommended), or
+   - Pair a fresh `activate X` / `deactivate X` WITHIN each branch.
+   ❌ WRONG:
+   ```
+   activate MSSQL
+   alt Query succeeds
+       deactivate MSSQL
+   else Query fails
+       deactivate MSSQL
+   end
+   ```
+   ✅ CORRECT:
+   ```
+   activate MSSQL
+   alt Query succeeds
+       MSSQL-->>Preview: rows
+   else Query fails
+       MSSQL-->>Preview: error
+   end
+   deactivate MSSQL
+   ```
 
 Sequence Diagram Example:
 ```mermaid

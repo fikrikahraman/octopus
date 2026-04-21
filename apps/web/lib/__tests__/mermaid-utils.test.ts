@@ -337,6 +337,94 @@ describe("sanitizeMermaidCode", () => {
     const result = sanitizeMermaidCode(code);
     expect(result).toContain("participant Runner as runAsk() tool loop");
   });
+
+  it("drops duplicate deactivate across alt/else branches", () => {
+    const code = [
+      "sequenceDiagram",
+      "    participant Preview",
+      "    participant MSSQL",
+      "    Preview->>MSSQL: connect",
+      "    activate MSSQL",
+      "    alt Query succeeds",
+      "        MSSQL-->>Preview: rows",
+      "        deactivate MSSQL",
+      "    else Query fails",
+      "        MSSQL-->>Preview: error",
+      "        deactivate MSSQL",
+      "    end",
+    ].join("\n");
+    const result = sanitizeMermaidCode(code);
+    const deactivateCount = (result.match(/deactivate MSSQL/g) ?? []).length;
+    expect(deactivateCount).toBe(1);
+    expect(result).toContain("activate MSSQL");
+  });
+
+  it("keeps balanced activate/deactivate pairs within a single branch", () => {
+    const code = [
+      "sequenceDiagram",
+      "    participant A",
+      "    participant B",
+      "    A->>B: call",
+      "    activate B",
+      "    B-->>A: reply",
+      "    deactivate B",
+    ].join("\n");
+    const result = sanitizeMermaidCode(code);
+    expect(result).toContain("activate B");
+    expect(result).toContain("deactivate B");
+  });
+
+  it("drops a stray deactivate with no prior activate", () => {
+    const code = [
+      "sequenceDiagram",
+      "    participant A",
+      "    participant B",
+      "    A->>B: call",
+      "    deactivate B",
+    ].join("\n");
+    const result = sanitizeMermaidCode(code);
+    expect(result).not.toContain("deactivate B");
+  });
+
+  it("appends trailing deactivate for unmatched activate", () => {
+    const code = [
+      "sequenceDiagram",
+      "    participant A",
+      "    participant B",
+      "    A->>B: call",
+      "    activate B",
+      "    B-->>A: reply",
+    ].join("\n");
+    const result = sanitizeMermaidCode(code);
+    const lines = result.split("\n");
+    expect(lines[lines.length - 1].trim()).toBe("deactivate B");
+  });
+
+  it("tracks nested activations per participant", () => {
+    const code = [
+      "sequenceDiagram",
+      "    participant A",
+      "    participant B",
+      "    activate B",
+      "    activate B",
+      "    deactivate B",
+      "    deactivate B",
+      "    deactivate B",
+    ].join("\n");
+    const result = sanitizeMermaidCode(code);
+    const deactivateCount = (result.match(/deactivate B/g) ?? []).length;
+    expect(deactivateCount).toBe(2);
+  });
+
+  it("does not rebalance non-sequence diagrams", () => {
+    const code = [
+      "graph TD",
+      "    A --> B",
+      "    deactivate C",
+    ].join("\n");
+    const result = sanitizeMermaidCode(code);
+    expect(result).toContain("deactivate C");
+  });
 });
 
 describe("extractNodeLabels", () => {

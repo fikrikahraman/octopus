@@ -169,6 +169,7 @@ export function sanitizeMermaidCode(code: string): string {
   //    `loop` block keyword and breaks every reference to it.
   if (/^\s*sequenceDiagram/m.test(result)) {
     result = renameReservedParticipants(result);
+    result = balanceSequenceActivations(result);
   }
 
   // 6. Remove trailing whitespace
@@ -232,6 +233,67 @@ function renameReservedParticipants(code: string): string {
     lines[i] = replaceInZone(line);
   }
   return lines.join("\n");
+}
+
+/**
+ * Balance activate/deactivate pairs in a sequence diagram.
+ *
+ * Mermaid's renderer tracks activation state linearly across the whole
+ * diagram — alt/else/opt/par branches are NOT treated as mutually
+ * exclusive. LLMs routinely generate this pattern, which breaks with
+ * "Trying to inactivate an inactive participant":
+ *
+ *   activate X
+ *   alt case A
+ *       deactivate X   (depth 1 -> 0)
+ *   else case B
+ *       deactivate X   (depth 0 -> ERROR)
+ *   end
+ *
+ * We walk the diagram line by line, tracking each participant's
+ * activation depth. Any `deactivate X` that would take depth below zero
+ * is dropped. Trailing unmatched activations get a balancing
+ * `deactivate` appended before the diagram ends so lifelines close cleanly.
+ */
+function balanceSequenceActivations(code: string): string {
+  const lines = code.split("\n");
+  const depth = new Map<string, number>();
+  const out: string[] = [];
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    const activateMatch = trimmed.match(/^activate\s+([A-Za-z][A-Za-z0-9_]*)\s*$/);
+    if (activateMatch) {
+      const id = activateMatch[1];
+      depth.set(id, (depth.get(id) ?? 0) + 1);
+      out.push(line);
+      continue;
+    }
+
+    const deactivateMatch = trimmed.match(/^deactivate\s+([A-Za-z][A-Za-z0-9_]*)\s*$/);
+    if (deactivateMatch) {
+      const id = deactivateMatch[1];
+      const current = depth.get(id) ?? 0;
+      if (current <= 0) continue;
+      depth.set(id, current - 1);
+      out.push(line);
+      continue;
+    }
+
+    out.push(line);
+  }
+
+  const leftover: string[] = [];
+  for (const [id, count] of depth) {
+    for (let i = 0; i < count; i++) leftover.push(`    deactivate ${id}`);
+  }
+  if (leftover.length > 0) {
+    while (out.length > 0 && out[out.length - 1].trim() === "") out.pop();
+    out.push(...leftover);
+  }
+
+  return out.join("\n");
 }
 
 /**
