@@ -5,6 +5,70 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.13] - 2026-04-24
+
+### Added
+- Comparison landing pages: /compare hub, /vs-coderabbit, /vs-greptile (#275)
+- HMAC-signed GitHub App install flow with clearer error dialogs (#273)
+- Rotating "Ask anything" entry point in the app sidebar (#279)
+- Help & Docs menu in the app sidebar (#248)
+- Organization avatar upload (Cloudflare R2) (#249)
+- Email validation and Gmail alias normalization on sign-up (#264)
+- Refreshed landing footer social links (#247)
+
+### Fixed
+- Embeddings batching now respects OpenAI's 300k-token per-request limit (#283)
+- Prevent duplicate review runs across replicas (#266)
+- Transaction history pagination shows the correct total (#263)
+- Balanced Mermaid activate/deactivate across alt/else branches
+- Rename Mermaid sequence participants that collide with reserved keywords (#250)
+- Chat responds in the language of the user's latest message only (#254)
+
+### Changed
+- SEO pass across docs and blog: canonical URLs, richer meta descriptions, BlogPosting JSON-LD, explicit AI-bot rules in robots.txt (#277)
+
+### Removed
+- In-app admin panel (#260)
+
+## [1.0.12] - 2026-04-16
+
+### Added
+- User display name management with auto-derive from email (#232)
+- CLI quick start guide on API tokens page (#235)
+- Redesigned landing page feature grid with hero card layout (#208)
+- Coupon code system for credit redemption (#213)
+- Organization creation limited to 3 per user (#214)
+
+### Fixed
+- Scope repository unique constraint to organizationId and rework Bitbucket workspace OAuth (#231)
+- Pass orgId through GitHub OAuth state for reliable org association (#207)
+- Org membership validation on Pubby auth and trigger endpoints (#220)
+- Input validation on user and organization name fields (#219)
+- Harden /api/auth/device against abuse (#203)
+- Spend limit banner shows detailed status (#215)
+- Event bus observer initialization race condition (#209)
+- Issue creation dialog content overflow on long descriptions (#234)
+- Blog slug uniqueness respects soft-deletes (#233)
+
+### Security
+- Remove deprecated collab integration and fix IDOR in generateIssueContent (#217)
+
+## [1.0.11] - 2026-04-09
+
+### Added
+- Finding verification via Qdrant to reduce false positives
+- Review Logs page (#195)
+- Production-ready Terraform for AWS self-hosting (#193)
+- Delegate chat answer generation to local agent (#186)
+
+### Fixed
+- Emit repo-analyzed event from all analysis trigger paths (#200)
+- Improved re-review scoring and resolved findings tracking (#197)
+- Sanitize semicolons in Mermaid and skip diagrams for docs PRs (#196)
+- Reduce false positives in review engine prompt and validation (#188)
+- Correct domain and page URLs in Ask Octopus system prompt
+- Fallback to /files endpoint when GitHub returns 406 on large diffs
+
 ## [1.0.10] - 2026-04-06
 
 ### Added
@@ -171,6 +235,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Suppress dismissed findings in Additional findings summary (#25)
 - CI lint failures across all packages (#36)
 
+[1.0.13]: https://github.com/octopusreview/octopus/compare/v1.0.12...v1.0.13
+[1.0.12]: https://github.com/octopusreview/octopus/compare/v1.0.11...v1.0.12
+[1.0.11]: https://github.com/octopusreview/octopus/compare/v1.0.10...v1.0.11
 [1.0.10]: https://github.com/octopusreview/octopus/compare/v1.0.9...v1.0.10
 [1.0.9]: https://github.com/octopusreview/octopus/compare/v1.0.8...v1.0.9
 [1.0.8]: https://github.com/octopusreview/octopus/compare/v1.0.7...v1.0.8
