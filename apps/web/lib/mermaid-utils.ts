@@ -1,5 +1,39 @@
 export type DiagramType = "flowchart" | "sequence" | "er" | "state";
 
+const SEQUENCE_RESERVED_KEYWORDS = new Set([
+  "participant",
+  "actor",
+  "note",
+  "loop",
+  "alt",
+  "else",
+  "opt",
+  "par",
+  "and",
+  "rect",
+  "activate",
+  "deactivate",
+  "autonumber",
+  "end",
+  "link",
+  "links",
+  "properties",
+  "details",
+  "destroy",
+  "create",
+  "box",
+  "break",
+  "critical",
+  "over",
+  "right",
+  "left",
+  "of",
+]);
+
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 export interface MermaidBlock {
   code: string;
   type: DiagramType;
@@ -129,10 +163,137 @@ export function sanitizeMermaidCode(code: string): string {
     );
   }
 
-  // 5. Remove trailing whitespace
+  // 5. Sequence diagrams: rename participants whose IDs collide with Mermaid
+  //    reserved keywords. Mermaid's sequence lexer matches these keywords
+  //    case-insensitively, so a participant named `Loop` is tokenized as the
+  //    `loop` block keyword and breaks every reference to it.
+  if (/^\s*sequenceDiagram/m.test(result)) {
+    result = renameReservedParticipants(result);
+    result = balanceSequenceActivations(result);
+  }
+
+  // 6. Remove trailing whitespace
   result = result.replace(/[ \t]+$/gm, "");
 
   return result;
+}
+
+/**
+ * Rename sequence-diagram participant IDs that collide with Mermaid reserved
+ * keywords (case-insensitive). References are rewritten only in positions
+ * where Mermaid expects a participant token (arrow lines before `:`,
+ * activate/deactivate/destroy/create, note over/left of/right of), never in
+ * message text, note bodies, comments, or alias display names.
+ */
+function renameReservedParticipants(code: string): string {
+  const declRe = /^(\s*(?:participant|actor)\s+)([A-Za-z][A-Za-z0-9_]*)\b/gm;
+
+  const existingIds = new Set<string>();
+  for (const match of code.matchAll(declRe)) {
+    existingIds.add(match[2]);
+  }
+
+  const renames = new Map<string, string>();
+  const result = code.replace(declRe, (full, prefix: string, id: string) => {
+    if (!SEQUENCE_RESERVED_KEYWORDS.has(id.toLowerCase())) return full;
+    let safe = `${id}_`;
+    while (existingIds.has(safe)) safe += "_";
+    existingIds.add(safe);
+    renames.set(id, safe);
+    return `${prefix}${safe}`;
+  });
+
+  if (renames.size === 0) return result;
+
+  const replaceInZone = (text: string): string => {
+    let out = text;
+    for (const [orig, safe] of renames) {
+      out = out.replace(new RegExp(`\\b${escapeRegex(orig)}\\b`, "g"), safe);
+    }
+    return out;
+  };
+
+  const lines = result.split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const trimmed = line.trimStart();
+    if (!trimmed || trimmed.startsWith("%%")) continue;
+    // Participant declarations already handled; do not touch their alias text.
+    if (/^(participant|actor)\s/i.test(trimmed)) continue;
+    // For lines with a colon (arrow messages, note bodies), only the segment
+    // before the first colon can contain participant references.
+    const colonIdx = line.indexOf(":");
+    if (colonIdx >= 0) {
+      lines[i] = replaceInZone(line.slice(0, colonIdx)) + line.slice(colonIdx);
+      continue;
+    }
+    // Lines without a colon: activate/deactivate/destroy/create + block
+    // keywords (loop/alt/etc.). Safe to replace globally — message text
+    // cannot appear on these lines.
+    lines[i] = replaceInZone(line);
+  }
+  return lines.join("\n");
+}
+
+/**
+ * Balance activate/deactivate pairs in a sequence diagram.
+ *
+ * Mermaid's renderer tracks activation state linearly across the whole
+ * diagram — alt/else/opt/par branches are NOT treated as mutually
+ * exclusive. LLMs routinely generate this pattern, which breaks with
+ * "Trying to inactivate an inactive participant":
+ *
+ *   activate X
+ *   alt case A
+ *       deactivate X   (depth 1 -> 0)
+ *   else case B
+ *       deactivate X   (depth 0 -> ERROR)
+ *   end
+ *
+ * We walk the diagram line by line, tracking each participant's
+ * activation depth. Any `deactivate X` that would take depth below zero
+ * is dropped. Trailing unmatched activations get a balancing
+ * `deactivate` appended before the diagram ends so lifelines close cleanly.
+ */
+function balanceSequenceActivations(code: string): string {
+  const lines = code.split("\n");
+  const depth = new Map<string, number>();
+  const out: string[] = [];
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    const activateMatch = trimmed.match(/^activate\s+([A-Za-z][A-Za-z0-9_]*)\s*$/);
+    if (activateMatch) {
+      const id = activateMatch[1];
+      depth.set(id, (depth.get(id) ?? 0) + 1);
+      out.push(line);
+      continue;
+    }
+
+    const deactivateMatch = trimmed.match(/^deactivate\s+([A-Za-z][A-Za-z0-9_]*)\s*$/);
+    if (deactivateMatch) {
+      const id = deactivateMatch[1];
+      const current = depth.get(id) ?? 0;
+      if (current <= 0) continue;
+      depth.set(id, current - 1);
+      out.push(line);
+      continue;
+    }
+
+    out.push(line);
+  }
+
+  const leftover: string[] = [];
+  for (const [id, count] of depth) {
+    for (let i = 0; i < count; i++) leftover.push(`    deactivate ${id}`);
+  }
+  if (leftover.length > 0) {
+    while (out.length > 0 && out[out.length - 1].trim() === "") out.pop();
+    out.push(...leftover);
+  }
+
+  return out.join("\n");
 }
 
 /**

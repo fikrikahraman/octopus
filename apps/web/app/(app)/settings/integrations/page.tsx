@@ -9,6 +9,19 @@ import { BitbucketDebugBanner } from "./bitbucket-debug-banner";
 import { LinearIntegrationCard } from "./linear-integration-card";
 import { JiraIntegrationCard } from "./jira-integration-card";
 
+const ALLOWED_GITHUB_ERRORS = [
+  "installation_already_bound",
+  "invalid_installation_id",
+  "missing_state",
+  "invalid_state_bad_signature",
+  "invalid_state_expired",
+  "invalid_state_malformed",
+  "replay_detected",
+  "not_a_member",
+] as const;
+
+type GitHubErrorCode = (typeof ALLOWED_GITHUB_ERRORS)[number];
+
 export default async function IntegrationsPage({
   searchParams,
 }: {
@@ -16,6 +29,11 @@ export default async function IntegrationsPage({
 }) {
   const params = await searchParams;
   const bbDebug = typeof params.bb_debug === "string" ? params.bb_debug : null;
+  const rawError = typeof params.error === "string" ? params.error : null;
+  const githubError: GitHubErrorCode | null =
+    rawError && (ALLOWED_GITHUB_ERRORS as readonly string[]).includes(rawError)
+      ? (rawError as GitHubErrorCode)
+      : null;
   const session = await auth.api.getSession({
     headers: await headers(),
   });
@@ -96,7 +114,11 @@ export default async function IntegrationsPage({
   return (
     <div className="space-y-6">
       {bbDebug && <BitbucketDebugBanner debugJson={bbDebug} />}
-      <GitHubIntegrationCard data={githubData} appSlug={appSlug} orgId={orgId} />
+      <GitHubIntegrationCard
+        data={githubData}
+        appSlug={appSlug}
+        error={githubError}
+      />
       <BitbucketIntegrationCard data={bitbucketIntegration} />
       <SlackIntegrationCard data={slackIntegration} />
       <LinearIntegrationCard data={linearIntegration} />

@@ -55,9 +55,17 @@ HEARTBEAT.md
 *.backup.*
 
 # claude code commands
+.claude/
 .claude/commands/
 .claude/settings.local.json
 .claude/scheduled_tasks.lock
+CLAUDE.md
+
+# root migrations
+/migrations/
+
+# prisma migrations (managed manually)
+packages/db/prisma/migrations/
 
 # openclaw
 .openclaw/
@@ -69,3 +77,5 @@ pentest/
 
 .omt-env
 .mcp.json
+
+.vscode/**

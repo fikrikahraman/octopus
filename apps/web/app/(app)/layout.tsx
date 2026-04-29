@@ -7,7 +7,6 @@ import { ChatWrapper } from "@/components/chat-wrapper";
 import { PermissionBanner } from "@/components/permission-banner";
 import { SpendLimitBanner } from "@/components/spend-limit-banner";
 import { getInstallationPermissions } from "@/lib/github";
-import { isAdminEmail } from "@/lib/admin";
 import { getOrgSpendLimitStatus } from "@/lib/cost";
 import { canUserCreateOrg } from "@/lib/org-limits";
 import { OrgCookieSync } from "@/components/org-cookie-sync";
@@ -139,14 +138,12 @@ export default async function AppLayout({
   const currentOrg =
     orgs.find((o) => o.id === currentOrgId) ?? orgs[0] ?? { id: "", name: "Octopus", avatarUrl: null };
 
-  const isAdmin = isAdminEmail(session.user.email);
   const canCreateOrg = await canUserCreateOrg(session.user.id);
 
   const sidebarProps = {
     user: { name: session.user.name, email: session.user.email },
     orgs,
     currentOrg,
-    isAdmin,
     canCreateOrg,
   };
 
@@ -182,9 +179,8 @@ export default async function AppLayout({
       <OrgCookieSync orgId={currentOrg.id} />
       <DeviceReporter />
       <div className="flex h-screen flex-col">
-        {orgsNeedingPermission.length > 0 && githubAppSlug && (
+        {orgsNeedingPermission.length > 0 && (
           <PermissionBanner
-            githubAppSlug={githubAppSlug}
             orgs={orgsNeedingPermission.map((o) => ({ id: o.id, name: o.name }))}
           />
         )}
